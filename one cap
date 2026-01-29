@@ -1,3 +1,5 @@
+# captures frame, saves with timestamped name
+
 # nano /home/ronaleipi/snap_picam.py
 # Ctrl O + Enter
 # Ctrl X
