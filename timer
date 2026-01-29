@@ -10,12 +10,12 @@ Description=One-shot Pi Camera snapshot
 [Service]
 Type=oneshot
 User=ronaleipi
-Group=video
-WorkingDirectory=/home/ronaleipi
+# no need Group=video
 Environment=XDG_RUNTIME_DIR=/run/user/1000
+WorkingDirectory=/home/ronaleipi
 ExecStart=/usr/bin/python3 /home/ronaleipi/snap_picam.py
-StandardOutput=append:/home/ronaleipi/picam-snap.log
-StandardError=append:/home/ronaleipi/picam-snap.log
+# no need StandardOutput=append:/home/ronaleipi/picam-snap.log
+# no need StandardError=append:/home/ronaleipi/picam-snap.log
 EOF
 
 
@@ -26,11 +26,12 @@ sudo tee /etc/systemd/system/picam-snap.timer >/dev/null <<'EOF'
 Description=Run Pi Camera snapshot every N minutes
 
 [Timer]
-OnBootSec=2min
-OnUnitActiveSec=10min 
+OnBootSec=10s
+OnUnitActiveSec=20s 
 # To run every 5 minutes, change OnUnitActiveSec=5min; for 30 minutes, 30min; for seconds, e.g., 600s.
 # If you want shots exactly at :00, :10, :20, … use OnCalendar= instead of OnUnitActiveSec=:
 # Ex: OnCalendar=*:0/10
+AccuracySec=1s
 Persistent=true
 
 [Install]
