@@ -1,0 +1,104 @@
+###### Rasp PI #################
+
+
+# 1 ##############
+~/hydro/
+  config.yaml                # intervals, paths, thresholds, api keys
+  capture/snap_picam.py      # you already have this
+  edge/
+    edge_infer.py            # orchestrator: load latest image, run RF + CV metrics
+    rf_infer.py              # your partner’s Roboflow inference (moduleized)
+    features.py              # ExG, brown_frac, area, diameters (optional keep)
+  data/YYYY-MM-DD/
+    layer1_*.jpg ...
+    overlays/
+    metrics.csv              # CV metrics (optional if you rely only on RF)
+    alerts.csv               # unified alerts (RF/CV)
+
+
+# 2 ########################
+ExecStart=/usr/bin/python3 /home/ronaleipi/snap_picam.py
+ExecStartPost=/usr/bin/python3 /home/ronaleipi/hydro/edge/edge_infer.py --latest
+
+
+# 3 ########################
+#!/usr/bin/env python3
+import os, json, argparse, time, csv
+from pathlib import Path
+from datetime import datetime
+import cv2
+
+from rf_infer import run_roboflow  # <- your partner’s function: returns detections & a health score
+# Optional: from features import compute_cv_metrics  # if you also want ExG/brown_frac/etc.
+
+DATA_DIR = Path.home() / "hydro" / "data"
+OUT_OVERLAYS = "overlays"
+ALERTS_CSV = "alerts.csv"     # one row per frame with flags + score
+METRICS_CSV = "metrics.csv"   # optional (CV-based features)
+
+def latest_image(day_dir: Path):
+    imgs = sorted(day_dir.glob("*.jpg")) + sorted(day_dir.glob("*.png"))
+    return imgs[-1] if imgs else None
+
+def draw_detections(bgr, dets):
+    # dets: list of {x,y,w,h,conf,class_name} or polygons; adapt to your output format
+    for d in dets:
+        x,y,w,h = map(int, [d["x"], d["y"], d["width"], d["height"]])
+        cv2.rectangle(bgr, (x-w//2,y-h//2), (x+w//2,y+h//2), (0,0,255), 2)
+        cv2.putText(bgr, f'{d.get("class","")} {d.get("confidence",0):.2f}',
+                    (x-w//2, max(0,y-h//2-5)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 2)
+    return bgr
+
+def append_row(csv_path, row, header):
+    exists = csv_path.exists()
+    with csv_path.open("a", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=header)
+        if not exists: w.writeheader()
+        w.writerow(row)
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--day", default=datetime.now().strftime("%Y-%m-%d"))
+    ap.add_argument("--latest", action="store_true")
+    args = ap.parse_args()
+
+    day_dir = DATA_DIR / args.day
+    day_dir.mkdir(parents=True, exist_ok=True)
+    img_path = latest_image(day_dir) if args.latest else None
+    if not img_path or not img_path.exists():
+        print("[WARN] No image found to process"); return
+
+    bgr = cv2.imread(str(img_path))
+    t0 = time.time()
+    dets, health_score, classes = run_roboflow(bgr)   # <- your partner’s function
+    infer_ms = int((time.time() - t0)*1000)
+
+    # Overlay & save
+    ov = draw_detections(bgr.copy(), dets)
+    ov_dir = day_dir / OUT_OVERLAYS; ov_dir.mkdir(exist_ok=True)
+    ov_path = ov_dir / (img_path.stem + "_rf.png")
+    cv2.imwrite(str(ov_path), ov)
+
+    # Build simple alert: flag if health_score below threshold or if any “bad” class detected
+    BAD_CLASSES = {"chlorosis","necrosis","pest","disease"}  # adapt to your labels
+    bad_present = any((d.get("class") in BAD_CLASSES) for d in dets)
+    HEALTH_MIN = 0.6  # tune: 0..1
+    alert = bad_present or (health_score < HEALTH_MIN)
+
+    # Save alerts CSV
+    row = dict(
+        timestamp=img_path.stem.split("_")[-1],
+        filename=img_path.name,
+        health_score=round(health_score,3),
+        bad_present=int(bad_present),
+        num_dets=len(dets),
+        infer_ms=infer_ms,
+        alert=int(alert)
+    )
+    append_row(day_dir / ALERTS_CSV, row, header=list(row.keys()))
+
+    print(f"[OK] {img_path.name} score={health_score:.3f} dets={len(dets)} alert={alert} {infer_ms}ms")
+    # If you also want CV features, call compute_cv_metrics(bgr, ...) and append to METRICS_CSV here.
+
+if __name__ == "__main__":
+    main()
