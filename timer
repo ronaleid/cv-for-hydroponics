@@ -10,12 +10,11 @@ Description=One-shot Pi Camera snapshot
 [Service]
 Type=oneshot
 User=ronaleipi
-# no need Group=video
-Environment=XDG_RUNTIME_DIR=/run/user/1000
 WorkingDirectory=/home/ronaleipi
+Environment=XDG_RUNTIME_DIR=/run/user/1000
 ExecStart=/usr/bin/python3 /home/ronaleipi/snap_picam.py
-# no need StandardOutput=append:/home/ronaleipi/picam-snap.log
-# no need StandardError=append:/home/ronaleipi/picam-snap.log
+StandardOutput=append:/home/ronaleipi/picam-snap.log
+StandardError=append:/home/ronaleipi/picam-snap.log
 EOF
 
 
@@ -23,11 +22,11 @@ EOF
 
 sudo tee /etc/systemd/system/picam-snap.timer >/dev/null <<'EOF'
 [Unit]
-Description=Run Pi Camera snapshot every N minutes
+Description=Run Pi Camera snapshot every 20 seconds
 
 [Timer]
 OnBootSec=10s
-OnUnitActiveSec=20s 
+OnUnitActiveSec=20s  
 # To run every 5 minutes, change OnUnitActiveSec=5min; for 30 minutes, 30min; for seconds, e.g., 600s.
 # If you want shots exactly at :00, :10, :20, … use OnCalendar= instead of OnUnitActiveSec=:
 # Ex: OnCalendar=*:0/10
@@ -42,14 +41,18 @@ EOF
 # 3) enable and start timer
 
 sudo systemctl daemon-reload
-sudo systemctl enable --now picam-snap.timer # ENABLE ~~~~~~~~~~~~~~~~
+sudo systemctl enable --now picam-snap.timer
+
+#try this if not working
+sudo systemctl start picam-snap.service
+journalctl -u picam-snap.service -n 20 --no-pager
+ls -lt /home/ronaleipi/lettuce_imgs | head
 
 
 # 4) check if working
 
-systemctl status picam-snap.timer # STATUS ~~~~~~~~~~~~
-tail -n 50 /home/ronaleipi/picam-snap.log
-ls -lt /home/ronaleipi/lettuce_imgs | head
+systemctl --no-pager status picam-snap.timer
+systemctl --no-pager list-timers | grep picam-snap
 
 
 # 5) change interval later
