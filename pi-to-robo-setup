@@ -1,0 +1,11 @@
+sudo apt update
+sudo apt install -y python3-venv python3-pip
+
+python3 -m venv ~/venvs/rf
+source ~/venvs/rf/bin/activate
+
+pip install --upgrade pip
+pip install roboflow opencv-python-headless requests
+
+# source ~/venvs/rf/bin/activate
+# ^ to run script
