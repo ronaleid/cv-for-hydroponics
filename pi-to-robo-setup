@@ -16,7 +16,7 @@ NEW
 sudo apt update
 sudo apt install -y python3-venv python3-pip
 
-python3 -m venv ~/venvs/rf
-source ~/venvs/rf/bin/activate
+python3 -m venv ~/venvs/rfupload
+source ~/venvs/rfupload/bin/activate
 pip install --upgrade pip
-pip install opencv-python-headless requests
+pip install roboflow
