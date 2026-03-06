@@ -1,0 +1,5 @@
+# Manual upload
+# scp -r ronaleipi@<PI_IP>:/home/ronaleipi/hydro/data/2026-01-29 ./hydro_2026-01-29
+# ^ Pi uploads images to a folder on laptop/server (SCP), then upload to Roboflow
+
+# Fully automated upload
