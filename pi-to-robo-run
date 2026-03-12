@@ -14,8 +14,8 @@ from pathlib import Path
 from roboflow import Roboflow
 
 # ---- CONFIG ----
-WORKSPACE = "instance-segmentation-l8tbf"
-PROJECT   = "lettuce-pi-test"
+WORKSPACE = "rona-u8uj2"
+PROJECT   = "lettuce-pi-test-zpydv"
 
 # Local folder where your timer saves images
 SRC_DIR   = Path("/home/ronaleipi/lettuce_imgs")
@@ -76,6 +76,17 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+#run manually (upload new images)
+source ~/venvs/rfupload/bin/activate
+python3 ~/hydro/upload_to_roboflow.py
+
+#stop with Ctrl C
+
+#exit environment
+deactivate
+#enter environment
+source ~/venvs/rfupload/bin/activate
 
 # run automatically
 '''
